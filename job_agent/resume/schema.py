@@ -12,6 +12,14 @@ def _coerce_str_list(value: object) -> list[str]:
     return []
 
 
+def _coerce_item_list(value: object) -> object:
+    if value is None:
+        return []
+    if isinstance(value, dict):
+        return [value]
+    return value
+
+
 class PersonalInfo(BaseModel):
     name: str | None = None
     phone: str | None = None
@@ -62,6 +70,11 @@ class Resume(BaseModel):
     projects: list[Project] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
     summary: str | None = None
+
+    @field_validator("education", "work_experience", "projects", mode="before")
+    @classmethod
+    def _item_lists(cls, value: object) -> object:
+        return _coerce_item_list(value)
 
     @field_validator("skills", mode="before")
     @classmethod

@@ -20,6 +20,7 @@ SYSTEM_PROMPT = """你是中文简历解析器。只根据用户提供的已切�
 - 工作经历抽取五元组：company、title、start_date、end_date、responsibilities、achievements。
 - 项目抽取 name、role、start_date、end_date、responsibilities、achievements。
 - 「个人实践学习」不得写入 work_experience；能对应到项目则进入 projects。
+- education、work_experience、projects、skills 即使只有一条也必须是数组，不能输出单个对象。
 - skills 输出短标签（如 java、langgraph），不要整段能力描述。
 - summary 可根据专业能力/求职方向概括，但不得编造未出现的公司、项目或数字。
 - 日期尽量写成 YYYY-MM 或 至今；起止时间分到 start_date / end_date，不要写在一个字段里。
