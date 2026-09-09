@@ -1,5 +1,5 @@
 from job_agent.resume.normalizer import normalize_resume
-from job_agent.resume.schema import PersonalInfo, Resume, WorkExperience
+from job_agent.resume.schema import Education, PersonalInfo, Resume, WorkExperience
 
 
 def test_normalize_dates_phone_skills_and_placeholders():
@@ -42,3 +42,25 @@ def test_normalize_chinese_month_and_garbage_date():
     out = normalize_resume(resume)
     assert out.work_experience[0].start_date == "2015-07"
     assert out.work_experience[0].end_date is None
+
+
+def test_normalize_date_range_in_start_field():
+    resume = Resume(
+        work_experience=[
+            WorkExperience(start_date="2021.08 - 2026.07", end_date=None),
+        ]
+    )
+    out = normalize_resume(resume)
+    assert out.work_experience[0].start_date == "2021-08"
+    assert out.work_experience[0].end_date == "2026-07"
+
+
+def test_normalize_date_range_with_present():
+    resume = Resume(
+        education=[
+            Education(start_date="2015.07 - 至今")
+        ]
+    )
+    out = normalize_resume(resume)
+    assert out.education[0].start_date == "2015-07"
+    assert out.education[0].end_date == "present"
