@@ -10,11 +10,13 @@ SECTION_KEYS = (
     "other",
 )
 
-SYSTEM_PROMPT = """你是中文简历解析器。只根据用户提供的已切分区块填写 Resume schema，不编造。
+SYSTEM_PROMPT = """你是中文简历解析器。只根据用户提供的已切分区块填写 Resume schema，用 JSON 输出，不编造。
 规则：
 - 原文没有的信息用 null 或空数组。
 - 明显占位（XXX、保密）视为缺失。
+- personal_info.name 必须取标题区 `#` 后的姓名，不能因为基本信息里没单独写「姓名」就填 null。
 - location 取期望城市或现居地原文，不要补全省市区。
+- phone 取基本信息里的电话，只保留数字含义，不要把「XXX」当电话。
 - 工作经历抽取五元组：company、title、start_date、end_date、responsibilities、achievements。
 - 项目抽取 name、role、start_date、end_date、responsibilities、achievements。
 - 「个人实践学习」不得写入 work_experience；能对应到项目则进入 projects。

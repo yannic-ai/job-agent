@@ -68,3 +68,12 @@ def split_sections(markdown: str) -> dict[str, str]:
         body = markdown.strip()
         return {"other": body} if body else {}
     return sections
+
+
+def heading_name(sections: dict[str, str]) -> str | None:
+    for line in (sections.get("title") or "").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#") and not stripped.startswith("##"):
+            name = stripped.lstrip("#").strip()
+            return name or None
+    return None

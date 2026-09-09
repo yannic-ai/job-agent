@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 
 from dotenv import load_dotenv
@@ -8,7 +8,7 @@ from job_agent.resume.errors import ResumeConfigError
 
 @dataclass(frozen=True)
 class LLMConfig:
-    api_key: str
+    api_key: str = field(repr=False)
     base_url: str
     model: str
 

@@ -13,8 +13,10 @@ def extract_resume(sections: dict[str, str], config: LLMConfig) -> Resume:
         api_key=config.api_key,
         base_url=config.base_url,
         temperature=0,
+        max_tokens=8192,
+        timeout=180,
     )
-    chain = prompt | llm.with_structured_output(Resume, method="json_schema")
+    chain = prompt | llm.with_structured_output(Resume, method="json_mode")
     payload = {
         key: escape_braces(sections[key]) if key in sections else "（无）"
         for key in SECTION_KEYS

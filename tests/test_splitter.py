@@ -51,3 +51,20 @@ def test_split_concatenates_same_id():
     sections = split_sections(text)
     assert "A" in sections["skills"]
     assert "B" in sections["skills"]
+
+
+def test_heading_name_from_title_section():
+    from job_agent.resume.pipeline import _fill_personal_info
+    from job_agent.resume.schema import Resume
+    from job_agent.resume.splitter import heading_name, split_sections
+
+    sections = split_sections("# 宗艳云\n\n## 基本信息\n杭州\n")
+    assert heading_name(sections) == "宗艳云"
+
+    filled = _fill_personal_info(
+        Resume(),
+        split_sections("# 宗艳云\n\n## 基本信息\n- 期望城市：杭州\n- 电话：138-0000-1234\n"),
+    )
+    assert filled.personal_info.name == "宗艳云"
+    assert filled.personal_info.location == "杭州"
+    assert filled.personal_info.phone == "138-0000-1234"

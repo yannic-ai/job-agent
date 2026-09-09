@@ -1,4 +1,15 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def _coerce_str_list(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        return [text] if text else []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return []
 
 
 class PersonalInfo(BaseModel):
@@ -24,6 +35,11 @@ class WorkExperience(BaseModel):
     responsibilities: list[str] = Field(default_factory=list)
     achievements: list[str] = Field(default_factory=list)
 
+    @field_validator("responsibilities", "achievements", mode="before")
+    @classmethod
+    def _lists(cls, value: object) -> list[str]:
+        return _coerce_str_list(value)
+
 
 class Project(BaseModel):
     name: str | None = None
@@ -33,6 +49,11 @@ class Project(BaseModel):
     responsibilities: list[str] = Field(default_factory=list)
     achievements: list[str] = Field(default_factory=list)
 
+    @field_validator("responsibilities", "achievements", mode="before")
+    @classmethod
+    def _lists(cls, value: object) -> list[str]:
+        return _coerce_str_list(value)
+
 
 class Resume(BaseModel):
     personal_info: PersonalInfo = Field(default_factory=PersonalInfo)
@@ -41,3 +62,8 @@ class Resume(BaseModel):
     projects: list[Project] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
     summary: str | None = None
+
+    @field_validator("skills", mode="before")
+    @classmethod
+    def _skills(cls, value: object) -> list[str]:
+        return _coerce_str_list(value)
