@@ -1,6 +1,18 @@
 from __future__ import annotations
 
+import math
+
 from job_agent.kb.models import BGE_M3_DIM, ResumeChunk, ResumeProfile
+
+
+def _cosine_similarity(left: list[float], right: list[float]) -> float:
+    """Return cosine similarity between two vectors."""
+    dot = sum(a * b for a, b in zip(left, right))
+    left_norm = math.sqrt(sum(a * a for a in left))
+    right_norm = math.sqrt(sum(b * b for b in right))
+    if left_norm == 0.0 or right_norm == 0.0:
+        return 0.0
+    return dot / (left_norm * right_norm)
 
 
 class FakeEmbedder:
@@ -135,10 +147,12 @@ class FakeMilvus:
     ) -> list[tuple[int, float]]:
         hits: list[tuple[int, float]] = []
         for vector_id, row in self._vectors.items():
-            row_resume_id, chunk_type, _chunk_index, _embedding = row
+            row_resume_id, chunk_type, _chunk_index, embedding = row
             if row_resume_id != resume_id or chunk_type not in chunk_types:
                 continue
-            hits.append((vector_id, 1.0))
+            score = _cosine_similarity(query_vector, embedding)
+            hits.append((vector_id, score))
+        hits.sort(key=lambda item: item[1], reverse=True)
         return hits[:top_k]
 
     def ids_for(self, resume_id: int) -> set[int]:
