@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
 
 DIMENSIONS = (
     "skills",
@@ -18,6 +18,13 @@ DimensionName = Literal[
     "location",
     "responsibilities",
 ]
+DIMENSION_LABEL_MAP = {
+    "技能": "skills",
+    "年限": "years",
+    "学历": "education",
+    "地点": "location",
+    "职责": "responsibilities",
+}
 
 
 def _coerce_str_list(value: object) -> list[str]:
@@ -56,6 +63,13 @@ class DimensionScore(BaseModel):
     score: int
     evidence: str
 
+    @field_validator("dimension", mode="before")
+    @classmethod
+    def _dimension_name(cls, value: object) -> object:
+        if isinstance(value, str):
+            return DIMENSION_LABEL_MAP.get(value.strip(), value.strip())
+        return value
+
     @field_validator("score")
     @classmethod
     def _score_range(cls, value: int) -> int:
@@ -81,5 +95,12 @@ def label_from_average(average: float) -> Recommendation:
 
 
 class Decision(BaseModel):
-    average: float
+    average: float = Field(validation_alias=AliasChoices("average", "average_score"))
     recommendation: Recommendation
+
+    @model_validator(mode="before")
+    @classmethod
+    def _unwrap_payload(cls, value: object) -> object:
+        if isinstance(value, dict) and isinstance(value.get("decision"), dict):
+            return value["decision"]
+        return value

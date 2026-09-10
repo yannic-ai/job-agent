@@ -33,6 +33,22 @@ def test_decision_round_trip():
     assert DIMENSIONS[0] == "skills"
 
 
+def test_decision_accepts_average_score_alias():
+    decision = Decision.model_validate({"average_score": 2.8, "recommendation": "不推荐"})
+
+    assert decision.average == 2.8
+    assert decision.recommendation == "不推荐"
+
+
+def test_decision_unwraps_decision_payload():
+    decision = Decision.model_validate(
+        {"decision": {"average_score": 3.2, "recommendation": "待定"}}
+    )
+
+    assert decision.average == 3.2
+    assert decision.recommendation == "待定"
+
+
 def test_dimension_score_score_range():
     low = DimensionScore(dimension="skills", score=1, evidence="ok")
     high = DimensionScore(dimension="skills", score=5, evidence="ok")
@@ -54,3 +70,9 @@ def test_dimension_score_evidence_non_empty():
 
     with pytest.raises(ValidationError):
         DimensionScore(dimension="skills", score=3, evidence="   ")
+
+
+def test_dimension_score_coerces_chinese_label():
+    score = DimensionScore(dimension="地点", score=3, evidence="地点符合")
+
+    assert score.dimension == "location"
