@@ -48,7 +48,6 @@ logger = logging.getLogger(__name__)
 
 DimensionScorer = Callable[[JobRequirement, Resume], DimensionScore]
 ProfileScorer = Callable[[JobRequirement, ResumeProfile], DimensionScore]
-DIMENSION_WEIGHT = 1 / len(DIMENSIONS)
 
 
 class ReportOutput(BaseModel):
@@ -68,17 +67,6 @@ async def jd_parse_node(state: MatchingState) -> dict[str, JobRequirement]:
         output_schema=JobRequirement,
         config=load_llm_config(),
     )
-    logger.info(
-        "JD 解析完成 title=%s must_have_skills=%s nice_to_have_skills=%s "
-        "years_required=%s education_required=%s location=%s responsibilities=%s",
-        result.title,
-        result.must_have_skills,
-        result.nice_to_have_skills,
-        result.years_required,
-        result.education_required,
-        result.location,
-        result.responsibilities,
-    )
     return {"job_requirement": result}
 
 
@@ -93,26 +81,12 @@ async def resume_extract_node(state: MatchingState) -> dict[str, Resume]:
         output_schema=Resume,
         config=load_llm_config(),
     )
-    logger.info(
-        "简历解析完成 name=%s location=%s skills=%s education_count=%s "
-        "work_experience_count=%s project_count=%s",
-        result.personal_info.name,
-        result.personal_info.location,
-        result.skills,
-        len(result.education),
-        len(result.work_experience),
-        len(result.projects),
-    )
     return {"resume": result}
 
 
 async def parse_join_node(state: MatchingState) -> dict[str, object]:
     """Synchronization node that waits for JD and resume parsing."""
-    logger.info(
-        "解析汇合完成 has_job=%s has_resume=%s",
-        state.get("job_requirement") is not None,
-        state.get("resume") is not None,
-    )
+
     return {}
 
 
@@ -217,25 +191,7 @@ async def decide_node(state: MatchingState) -> dict[str, Decision]:
         output_schema=Decision,
         config=load_llm_config(),
     )
-    decision = average_and_label(score_values)
-    logger.info(
-        "决策完成 average=%.2f recommendation=%s dimensions=%s",
-        decision.average,
-        decision.recommendation,
-        json.dumps(
-            [
-                {
-                    "dimension": item.dimension,
-                    "score": item.score,
-                    "weight": DIMENSION_WEIGHT,
-                    "evidence": item.evidence,
-                }
-                for item in score_items
-            ],
-            ensure_ascii=False,
-        ),
-    )
-    return {"decision": decision}
+    return {"decision": average_and_label(score_values)}
 
 
 async def report_node(state: MatchingState) -> dict[str, str]:
@@ -270,13 +226,6 @@ async def report_node(state: MatchingState) -> dict[str, str]:
         scores=score_items,
         decision=decision,
     )
-    logger.info(
-        "报告生成完成 title=%s candidate=%s average=%.2f recommendation=%s",
-        title,
-        candidate_name,
-        decision.average,
-        decision.recommendation,
-    )
     return {"report": report}
 
 
@@ -299,7 +248,6 @@ async def _evaluate_dimension_node(
     resume_slice: Resume,
 ) -> dict[str, dict[str, DimensionScore]]:
     """Run one evaluation expert and persist the deterministic Python score."""
-    logger.info("开始评估维度 dimension=%s", dimension_label)
     prompt = build_evaluate_prompt()
     job_json = job_slice.model_dump_json()
     resume_json = resume_slice.model_dump_json()
@@ -315,14 +263,6 @@ async def _evaluate_dimension_node(
         config=config,
     )
     score = scorer(job_slice, resume_slice)
-    logger.info(
-        "评估维度完成 dimension=%s weight=%.2f score=%s source=%s evidence=%s",
-        dimension_label,
-        DIMENSION_WEIGHT,
-        score.score,
-        _format_dimension_source(job_slice, resume_slice),
-        score.evidence,
-    )
     return {"dimension_scores": {score.dimension: score}}
 
 
@@ -336,7 +276,6 @@ async def _evaluate_profile_dimension_node(
     profile_slice: ResumeProfile,
 ) -> dict[str, dict[str, DimensionScore]]:
     """Run one profile-based evaluation expert and persist the Python score."""
-    logger.info("开始评估维度 dimension=%s", dimension_label)
     prompt = build_evaluate_prompt()
     job_json = job_slice.model_dump_json()
     profile_json = profile_slice.model_dump_json()
@@ -352,14 +291,6 @@ async def _evaluate_profile_dimension_node(
         config=config,
     )
     score = scorer(job_slice, profile_slice)
-    logger.info(
-        "评估维度完成 dimension=%s weight=%.2f score=%s source=%s evidence=%s",
-        dimension_label,
-        DIMENSION_WEIGHT,
-        score.score,
-        _format_dimension_source(job_slice, profile_slice),
-        score.evidence,
-    )
     return {"dimension_scores": {score.dimension: score}}
 
 
@@ -377,17 +308,3 @@ def _to_json(value: object) -> str:
     if isinstance(value, BaseModel):
         return value.model_dump_json()
     return json.dumps(value, ensure_ascii=False)
-
-
-def _format_dimension_source(
-    job_slice: JobRequirement,
-    source_slice: Resume | ResumeProfile,
-) -> str:
-    """Summarize the JD/source fields actually used to score one dimension."""
-    source_key = "profile" if isinstance(source_slice, ResumeProfile) else "resume"
-    payload = {
-        "score_origin": "python_scorer",
-        "job": job_slice.model_dump(exclude_defaults=True, exclude_none=True),
-        source_key: source_slice.model_dump(exclude_defaults=True, exclude_none=True),
-    }
-    return json.dumps(payload, ensure_ascii=False)
