@@ -43,3 +43,14 @@ def test_dimension_score_score_range():
         DimensionScore(dimension="skills", score=0, evidence="bad")
     with pytest.raises(ValidationError):
         DimensionScore(dimension="skills", score=6, evidence="bad")
+
+
+def test_dimension_score_evidence_non_empty():
+    score = DimensionScore(dimension="skills", score=3, evidence="技能 2/2 命中")
+    assert score.evidence == "技能 2/2 命中"
+
+    with pytest.raises(ValidationError):
+        DimensionScore(dimension="skills", score=3, evidence="")
+
+    with pytest.raises(ValidationError):
+        DimensionScore(dimension="skills", score=3, evidence="   ")

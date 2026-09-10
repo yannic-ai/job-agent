@@ -63,6 +63,14 @@ class DimensionScore(BaseModel):
             raise ValueError("score must be 1-5")
         return value
 
+    @field_validator("evidence")
+    @classmethod
+    def _evidence_non_empty(cls, value: str) -> str:
+        text = value.strip()
+        if not text:
+            raise ValueError("evidence must be non-empty")
+        return text
+
 
 def label_from_average(average: float) -> Recommendation:
     if average >= 4.0:
