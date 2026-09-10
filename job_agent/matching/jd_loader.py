@@ -16,4 +16,9 @@ def load_jd(path: str | Path) -> str:
         raise MatchingFileError(
             f"仅支持 Markdown（.md）或文本（.txt）文件：{file_path}"
         )
-    return file_path.read_text(encoding="utf-8")
+    try:
+        return file_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise MatchingFileError(
+            f"文件不是有效的 UTF-8 编码：{file_path}"
+        ) from exc

@@ -65,7 +65,7 @@ def split_jd_sections(markdown: str) -> dict[str, str]:
             flush()
             saw_boundary = True
             current_id = _map_heading(match.group(2).strip())
-            buf = [line]
+            buf = []
             continue
         buf.append(line)
 

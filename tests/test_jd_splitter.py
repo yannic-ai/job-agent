@@ -17,6 +17,7 @@ SAMPLE = """#职位介绍
 def test_split_maps_hash_headings_without_space():
     sections = split_jd_sections(SAMPLE)
     assert "Agent 平台" in sections["intro"]
+    assert "#职位介绍" not in sections["intro"]
     assert "编排" in sections["responsibilities"]
     assert "Python" in sections["requirements"]
     assert "LangChain" in sections["nice_to_have"]
