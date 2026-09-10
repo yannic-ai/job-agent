@@ -29,6 +29,6 @@ include = ["job_agent*"]
 testpaths = ["tests"]
 pythonpath = ["."]
 markers = [
-    "live: requires LLM credentials and the sample markdown resume",
+    "live: requires MySQL, Milvus, BGE-M3, LLM credentials, and the sample markdown resume",
 ]
 addopts = "-m 'not live'"
