@@ -3,6 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate
 SECTION_KEYS = (
     "title",
     "personal_info",
+    "target_role",
     "skills",
     "work_experience",
     "projects",
@@ -17,6 +18,7 @@ SYSTEM_PROMPT = """你是中文简历解析器。只根据用户提供的已切�
 - personal_info.name 必须取标题区 `#` 后的姓名，不能因为基本信息里没单独写「姓名」就填 null。
 - location 取期望城市或现居地原文，不要补全省市区。
 - phone 取基本信息里的电话，只保留数字含义，不要把「XXX」当电话。
+- target_role 取求职岗位、求职方向、期望职位或意向岗位原文，不要扩写成职级或公司内部title；没有则 null。
 - 工作经历抽取五元组：company、title、start_date、end_date、responsibilities、achievements。
 - 项目抽取 name、role、start_date、end_date、responsibilities、achievements。
 - 「个人实践学习」不得写入 work_experience；能对应到项目则进入 projects。
@@ -33,6 +35,9 @@ HUMAN_PROMPT = """请根据下列已切分的简历区块提取结构化信息�
 
 # 个人信息
 {personal_info}
+
+# 求职岗位
+{target_role}
 
 # 技能 / 专业能力
 {skills}

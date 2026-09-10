@@ -121,4 +121,5 @@ def normalize_resume(resume: Resume) -> Resume:
         ],
         skills=normalize_skills(resume.skills),
         summary=_blank_to_none(resume.summary),
+        target_role=_blank_to_none(resume.target_role),
     )

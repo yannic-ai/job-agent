@@ -10,6 +10,7 @@ def test_resume_defaults_and_nulls():
     assert dumped["projects"] == []
     assert dumped["skills"] == []
     assert dumped["summary"] is None
+    assert dumped["target_role"] is None
 
 
 def test_work_experience_coerces_string_lists():

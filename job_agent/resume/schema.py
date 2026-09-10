@@ -70,6 +70,7 @@ class Resume(BaseModel):
     projects: list[Project] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
     summary: str | None = None
+    target_role: str | None = None
 
     @field_validator("education", "work_experience", "projects", mode="before")
     @classmethod

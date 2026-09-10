@@ -13,6 +13,6 @@ logger = logging.getLogger(__name__)
 @tool
 async def average_and_label_tool(scores: list[int]) -> str:
     """Average five dimension scores and return Decision JSON."""
-    logger.info("averaging dimension scores", extra={"score_count": len(scores)})
+    logger.info("averaging dimension scores scores=%s", scores)
     decision = await asyncio.to_thread(average_and_label, scores)
     return decision.model_dump_json()

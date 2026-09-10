@@ -17,10 +17,13 @@
 熟悉大模型 AP|使用及 Prompt Engineering
 具备良好的系统设计能力
 ·对 AlAgent、LLM 应用或智能系统有浓厚兴趣
-##加分项
+#地点
+上海、杭州
+#加分项
 ·有 LangChain、AutoGPT、CrewAl等 Agent 框架使用或开发经验
 ·有 AI工作流或任务编排系统开发经验
 ·熟悉向量数据库与 RAG 系统
 ·有 Tool-Calling 或 Al Workflow 设计经验
 ·有 AI或开发者工具相关开源项目经验
 ·对 AlAgent、推理系统或 AI开发平台有深入兴趣
+

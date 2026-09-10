@@ -1,15 +1,15 @@
-from datetime import date
-
+from job_agent.kb.models import ResumeProfile
 from job_agent.matching.schemas import JobRequirement
 from job_agent.matching.scoring import (
     hit_ratio_to_score,
+    missing_retrieval_score,
     score_education,
     score_location,
     score_responsibilities,
     score_skills,
     score_years,
 )
-from job_agent.resume.schema import Education, PersonalInfo, Resume, WorkExperience
+from job_agent.resume.schema import PersonalInfo, Resume, WorkExperience
 
 
 def test_hit_ratio_to_score_buckets():
@@ -36,25 +36,33 @@ def test_all_skills_hit_is_five():
 
 def test_both_locations_empty_is_three():
     job = JobRequirement(location=None)
-    resume = Resume(personal_info=PersonalInfo(location=None))
-    assert score_location(job, resume).score == 3
+    profile = ResumeProfile(source_path="x.md", location=None)
+    assert score_location(job, profile).score == 3
 
 
-def test_years_meets_requirement():
+def test_years_uses_experience_months_only():
     job = JobRequirement(years_required="3年以上")
-    resume = Resume(
-        work_experience=[
-            WorkExperience(start_date="2018-01", end_date="present"),
-        ]
-    )
-    result = score_years(job, resume, today=date(2026, 9, 10))
-    assert result.score >= 4
+    profile = ResumeProfile(source_path="x.md", experience_months=48)
+    assert score_years(job, profile).score >= 4
 
 
 def test_education_bachelor_required():
     job = JobRequirement(education_required="本科及以上")
-    resume = Resume(education=[Education(degree="本科")])
-    assert score_education(job, resume).score == 4
+    profile = ResumeProfile(source_path="x.md", highest_degree="本科")
+    assert score_education(job, profile).score == 4
+
+
+def test_education_missing_candidate_degree_is_three():
+    job = JobRequirement(education_required="本科及以上")
+    profile = ResumeProfile(source_path="x.md", highest_degree=None)
+
+    assert score_education(job, profile).score == 3
+
+
+def test_missing_retrieval_is_three():
+    result = missing_retrieval_score("skills")
+    assert result.score == 3
+    assert result.evidence == "未召回到相关条目"
 
 
 def test_responsibilities_hit_is_five():
