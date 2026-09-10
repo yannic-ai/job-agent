@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import os
 import sys
 
 from job_agent.kb.errors import KbConfigError, KbNotFoundError, KbStoreError
@@ -18,8 +20,22 @@ from job_agent.resume.loader import load_markdown
 USAGE = "用法：python -m job_agent.match <jd.md> <resume.md|resume_id>"
 
 
+def _configure_logging() -> None:
+    """Send INFO logs to stderr so the Markdown report stays on stdout."""
+    if logging.getLogger().handlers:
+        return
+    level_name = os.environ.get("JOB_AGENT_LOG_LEVEL", "INFO").upper()
+    level = getattr(logging, level_name, logging.INFO)
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        stream=sys.stderr,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the matching CLI and return the process exit code."""
+    _configure_logging()
 
     args = sys.argv[1:] if argv is None else argv
     if len(args) != 2:

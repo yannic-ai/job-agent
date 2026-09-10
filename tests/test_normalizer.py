@@ -21,6 +21,7 @@ def test_normalize_dates_phone_skills_and_placeholders():
         ],
         skills=["Python", "python", " Redis ", ""],
         summary="后端",
+        target_role="  AI Agent / Java 全栈  ",
     )
     out = normalize_resume(resume)
     assert out.personal_info.name is None
@@ -31,6 +32,7 @@ def test_normalize_dates_phone_skills_and_placeholders():
     assert out.work_experience[0].end_date == "present"
     assert out.work_experience[0].responsibilities == ["做题"]
     assert out.skills == ["python", "redis"]
+    assert out.target_role == "AI Agent / Java 全栈"
 
 
 def test_normalize_chinese_month_and_garbage_date():

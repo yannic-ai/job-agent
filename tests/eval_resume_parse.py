@@ -18,6 +18,7 @@ REQUIRED_KEYS = {
     "projects",
     "skills",
     "summary",
+    "target_role",
 }
 
 
@@ -83,5 +84,6 @@ def test_parse_zong_yanyun_resume():
         assert item.get("end_date")
 
     assert dumped["summary"]
+    assert "AI Agent" in (dumped.get("target_role") or "")
     _walk_dates(dumped)
     print("gold name", gold["personal_info"]["name"], "got", dumped["personal_info"]["name"])
