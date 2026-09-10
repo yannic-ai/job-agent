@@ -25,18 +25,21 @@ def test_resume_extract_node_does_not_preinvoke_resume_tool(monkeypatch) -> None
     from job_agent.matching import nodes
 
     fake_tool = FakeResumeTool()
-    expected_resume = Resume(
-        personal_info={"name": "Python Candidate"},
-        skills=["langgraph"],
-    )
+    expected_resume = Resume(personal_info={"name": "LLM Candidate"})
     captured_tools: list[object] = []
+    parse_resume_calls: list[str] = []
 
     async def fake_run_expert(**kwargs: object) -> Resume:
         captured_tools.extend(kwargs["tools"])
         return await _fake_run_expert(**kwargs)
 
     monkeypatch.setattr(nodes, "parse_resume_file", fake_tool)
-    monkeypatch.setattr(nodes, "parse_resume", lambda path: expected_resume, raising=False)
+    monkeypatch.setattr(
+        nodes,
+        "parse_resume",
+        lambda path: parse_resume_calls.append(path),
+        raising=False,
+    )
     monkeypatch.setattr(nodes, "run_expert", fake_run_expert)
     monkeypatch.setattr(nodes, "load_llm_config", lambda: object())
 
@@ -46,4 +49,5 @@ def test_resume_extract_node_does_not_preinvoke_resume_tool(monkeypatch) -> None
 
     assert fake_tool.calls == 0
     assert captured_tools == [fake_tool]
+    assert parse_resume_calls == []
     assert result == {"resume": expected_resume}

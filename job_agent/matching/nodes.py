@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import asyncio
 import json
 import logging
 from typing import Callable
@@ -42,7 +40,6 @@ from job_agent.matching.schemas import (
 from job_agent.matching.resume_prompts import build_resume_prompt
 from job_agent.matching.resume_tools import parse_resume_file
 from job_agent.matching.state import MatchingState
-from job_agent.resume.pipeline import parse_resume
 from job_agent.resume.schema import Resume
 
 logger = logging.getLogger(__name__)
@@ -75,14 +72,13 @@ async def resume_extract_node(state: MatchingState) -> dict[str, Resume]:
     logger.info("parsing resume", extra={"resume_path": state["resume_path"]})
     prompt = build_resume_prompt()
     messages = await prompt.aformat_messages(resume_path=state["resume_path"])
-    await run_expert(
+    result = await run_expert(
         messages=messages,
         tools=[parse_resume_file],
         output_schema=Resume,
         config=load_llm_config(),
     )
-    resume = await asyncio.to_thread(parse_resume, state["resume_path"])
-    return {"resume": resume}
+    return {"resume": result}
 
 
 async def parse_join_node(state: MatchingState) -> dict[str, object]:
