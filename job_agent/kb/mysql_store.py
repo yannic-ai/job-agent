@@ -37,11 +37,11 @@ class ResumeRow(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     source_path: Mapped[str] = mapped_column(String(1024), unique=True)
     source_hash: Mapped[str] = mapped_column(String(64))
-    name: Mapped[str | None]
-    location: Mapped[str | None]
-    phone: Mapped[str | None]
-    email: Mapped[str | None]
-    highest_degree: Mapped[str | None]
+    name: Mapped[str | None] = mapped_column(String(255))
+    location: Mapped[str | None] = mapped_column(String(255))
+    phone: Mapped[str | None] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(255))
+    highest_degree: Mapped[str | None] = mapped_column(String(16))
     experience_months: Mapped[int | None]
     status: Mapped[str] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(

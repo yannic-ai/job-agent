@@ -53,22 +53,38 @@ async def open_kb(config: KbConfig | None = None) -> KbHandles:
     """Open concrete knowledge-base services from configuration."""
     resolved_config = config or load_kb_config()
     mysql = SqlAlchemyResumeStore(resolved_config)
-    try:
-        milvus, embedder = await asyncio.gather(
-            asyncio.to_thread(
-                PyMilvusResumeStore,
-                uri=resolved_config.milvus_uri,
-                token=resolved_config.milvus_token,
-            ),
-            asyncio.to_thread(
-                BgeM3Embedder,
-                model_name=resolved_config.bge_m3_model,
-            ),
-        )
-    except Exception:
+    milvus_result, embedder_result = await asyncio.gather(
+        asyncio.to_thread(
+            PyMilvusResumeStore,
+            uri=resolved_config.milvus_uri,
+            token=resolved_config.milvus_token,
+        ),
+        asyncio.to_thread(
+            BgeM3Embedder,
+            model_name=resolved_config.bge_m3_model,
+        ),
+        return_exceptions=True,
+    )
+    created_milvus = (
+        milvus_result
+        if isinstance(milvus_result, PyMilvusResumeStore)
+        else None
+    )
+    init_errors = [
+        result
+        for result in (milvus_result, embedder_result)
+        if isinstance(result, BaseException)
+    ]
+    if init_errors:
+        if created_milvus is not None:
+            await created_milvus.close()
         await mysql.close()
-        raise
-    return KbHandles(mysql=mysql, milvus=milvus, embedder=embedder)
+        raise init_errors[0]
+    return KbHandles(
+        mysql=mysql,
+        milvus=milvus_result,
+        embedder=embedder_result,
+    )
 
 
 async def ingest_resume(

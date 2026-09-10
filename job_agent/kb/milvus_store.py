@@ -27,6 +27,7 @@ class PyMilvusResumeStore:
     def _ensure_collection(self) -> None:
         """Create the locked resume chunk collection and index when absent."""
         if self._client.has_collection(collection_name=COLLECTION_NAME):
+            self._client.load_collection(collection_name=COLLECTION_NAME)
             return
 
         schema = self._client.create_schema(
@@ -63,6 +64,7 @@ class PyMilvusResumeStore:
             schema=schema,
             index_params=index_params,
         )
+        self._client.load_collection(collection_name=COLLECTION_NAME)
 
     async def close(self) -> None:
         """Close the PyMilvus client when supported by its version."""
