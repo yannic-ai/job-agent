@@ -85,6 +85,12 @@ def score_education(job: JobRequirement, profile: ResumeProfile) -> DimensionSco
     required_level = _highest_required_degree(job.education_required)
     if required_level is None:
         return DimensionScore(dimension="education", score=3, evidence="岗位未提供学历要求")
+    if profile.highest_degree is None:
+        return DimensionScore(
+            dimension="education",
+            score=3,
+            evidence="简历最高学历缺失",
+        )
 
     candidate_level = _profile_degree_level(profile.highest_degree)
     candidate_label = profile.highest_degree or "未识别"

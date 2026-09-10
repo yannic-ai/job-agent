@@ -4,9 +4,11 @@ import asyncio
 import hashlib
 import logging
 from collections.abc import Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
+from typing import AsyncIterator
 
 from job_agent.config import KbConfig, load_kb_config
 from job_agent.kb.chunker import chunk_resume
@@ -87,6 +89,18 @@ async def open_kb(config: KbConfig | None = None) -> KbHandles:
     )
 
 
+@asynccontextmanager
+async def open_mysql(
+    config: KbConfig | None = None,
+) -> AsyncIterator[SqlAlchemyResumeStore]:
+    """Open only the MySQL resume store for profile reads."""
+    mysql = SqlAlchemyResumeStore(config or load_kb_config())
+    try:
+        yield mysql
+    finally:
+        await mysql.close()
+
+
 async def ingest_resume(
     path: str,
     *,
@@ -143,12 +157,11 @@ async def _ingest_resume(
         source_hash=source_hash,
         profile=profile,
     )
-    await milvus.delete_by_resume_id(resume_id)
-
-    chunks = chunk_resume(resume)
-    stored_chunks = await mysql.replace_chunks(resume_id, chunks)
 
     try:
+        await milvus.delete_by_resume_id(resume_id)
+        chunks = chunk_resume(resume)
+        stored_chunks = await mysql.replace_chunks(resume_id, chunks)
         for chunk in stored_chunks:
             if chunk.id is None:
                 raise KbStoreError("chunk id missing after replace_chunks")
@@ -166,11 +179,11 @@ async def _ingest_resume(
             )
             await mysql.mark_chunk_vectorized(chunk.id, chunk.id)
     except Exception as exc:
-        logger.exception("vectorization failed", extra={"resume_id": resume_id})
+        logger.exception("resume ingest failed", extra={"resume_id": resume_id})
         await mysql.mark_resume_status(resume_id, "failed")
         if isinstance(exc, KbStoreError):
             raise
-        raise KbStoreError("vectorization failed") from exc
+        raise KbStoreError("resume ingest failed") from exc
 
     await mysql.mark_resume_status(resume_id, "vectorized")
     return resume_id

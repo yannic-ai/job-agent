@@ -4,7 +4,8 @@ SYSTEM_PROMPT = """你是中文简历评估专家。你每次只评估一个维�
 规则：
 - 只评估当前维度，不扩展到其他维度。
 - 必须先调用对应评分 tool。
-- 调用评分 tool 时，`job_json` 和 `resume_json` 必须逐字复制下方提供的完整 JSON 字符串，不能截断、不能改写、不能手动转述。
+- 调用评分 tool 时，必须严格使用下方“工具参数”指定的参数名和值。
+- JSON 参数必须逐字复制对应的完整 JSON 字符串，不能截断、不能改写、不能手动转述。
 - 证据必须基于给定 JD/简历切片与工具结果。
 - 不编造候选人没有写过的公司、项目或经历。
 - 输出必须是 DimensionScore 结构。
@@ -12,16 +13,17 @@ SYSTEM_PROMPT = """你是中文简历评估专家。你每次只评估一个维�
 """
 
 HUMAN_PROMPT = """当前评估维度：{dimension_label}
-调用 tool 时请直接复制下面两段 JSON 的原文内容作为参数值。
+工具参数：
+{tool_arguments}
 
 JD 切片 JSON：
 ```json
 {job_requirement_json}
 ```
 
-简历切片 JSON：
+简历/档案切片 JSON：
 ```json
-{resume_json}
+{resume_payload_json}
 ```
 """
 

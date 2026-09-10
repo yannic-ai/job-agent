@@ -5,7 +5,7 @@ import logging
 from langchain.tools import tool
 
 from job_agent.kb.errors import KbConfigError, KbNotFoundError, KbStoreError
-from job_agent.kb.pipeline import ingest_resume, load_profile, open_kb
+from job_agent.kb.pipeline import ingest_resume, load_profile, open_kb, open_mysql
 from job_agent.matching.errors import MatchingExtractError
 from job_agent.resume.errors import (
     ResumeConfigError,
@@ -52,6 +52,6 @@ async def ingest_resume_file(path: str) -> str:
 async def load_resume_by_id(resume_id: int) -> str:
     """Load a vectorized resume profile by knowledge-base ID."""
     logger.info("loading resume profile", extra={"resume_id": resume_id})
-    async with await open_kb() as handles:
-        profile = await load_profile(resume_id, mysql=handles.mysql)
+    async with open_mysql() as mysql:
+        profile = await load_profile(resume_id, mysql=mysql)
         return profile.model_dump_json()

@@ -52,6 +52,13 @@ def test_education_bachelor_required():
     assert score_education(job, profile).score == 4
 
 
+def test_education_missing_candidate_degree_is_three():
+    job = JobRequirement(education_required="本科及以上")
+    profile = ResumeProfile(source_path="x.md", highest_degree=None)
+
+    assert score_education(job, profile).score == 3
+
+
 def test_missing_retrieval_is_three():
     result = missing_retrieval_score("skills")
     assert result.score == 3

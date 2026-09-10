@@ -1,13 +1,17 @@
 from __future__ import annotations
+
+import asyncio
 import json
 import logging
-from typing import Callable
+from contextlib import asynccontextmanager
+from contextvars import ContextVar, Token
+from typing import AsyncIterator, Awaitable, Callable
 
 from pydantic import BaseModel
 
 from job_agent.config import LLMConfig, load_llm_config
 from job_agent.kb.models import ResumeChunkHit, ResumeProfile
-from job_agent.kb.pipeline import open_kb
+from job_agent.kb.pipeline import KbHandles, open_kb
 from job_agent.kb.retrieve import search_resume_chunks
 from job_agent.matching.decide_prompts import build_decide_prompt
 from job_agent.matching.decide_tools import average_and_label_tool
@@ -56,6 +60,54 @@ logger = logging.getLogger(__name__)
 
 DimensionScorer = Callable[[JobRequirement, Resume], DimensionScore]
 ProfileScorer = Callable[[JobRequirement, ResumeProfile], DimensionScore]
+
+
+class _MatchingKbContext:
+    """Lazily own one KB handle set for a matching run."""
+
+    def __init__(self) -> None:
+        self._handles: KbHandles | None = None
+        self._lock = asyncio.Lock()
+
+    async def get(
+        self,
+        opener: Callable[[], Awaitable[KbHandles]],
+    ) -> KbHandles:
+        """Return shared handles, opening them once under concurrent access."""
+        async with self._lock:
+            if self._handles is None:
+                self._handles = await opener()
+            return self._handles
+
+    async def close(self) -> None:
+        """Close shared handles when they were initialized."""
+        if self._handles is not None:
+            await self._handles.close()
+
+
+_matching_kb_context: ContextVar[_MatchingKbContext | None] = ContextVar(
+    "matching_kb_context",
+    default=None,
+)
+
+
+@asynccontextmanager
+async def matching_kb_context() -> AsyncIterator[None]:
+    """Share lazily opened KB handles within one matching graph run."""
+    existing = _matching_kb_context.get()
+    if existing is not None:
+        yield
+        return
+
+    context = _MatchingKbContext()
+    token: Token[_MatchingKbContext | None] = _matching_kb_context.set(context)
+    try:
+        yield
+    finally:
+        try:
+            await context.close()
+        finally:
+            _matching_kb_context.reset(token)
 
 
 class ReportOutput(BaseModel):
@@ -111,16 +163,12 @@ async def eval_skills_node(state: MatchingState) -> dict[str, dict[str, Dimensio
         nice_to_have_skills=job.nice_to_have_skills,
     )
     query = ", ".join(job.must_have_skills + job.nice_to_have_skills)
-    async with await open_kb() as handles:
-        hits = await search_resume_chunks(
-            resume_id,
-            ["skills"],
-            query,
-            1,
-            mysql=handles.mysql,
-            milvus=handles.milvus,
-            embedder=handles.embedder,
-        )
+    hits = await _search_resume_chunks(
+        resume_id,
+        ["skills"],
+        query,
+        1,
+    )
     resume_slice = build_skills_resume_slice(hits)
     if resume_slice is None:
         return await _evaluate_missing_retrieval_node(
@@ -193,16 +241,12 @@ async def eval_responsibilities_node(
     resume_id = _require_resume_id(state)
     job_slice = JobRequirement(responsibilities=job.responsibilities)
     query = "\n".join(job.responsibilities)
-    async with await open_kb() as handles:
-        hits = await search_resume_chunks(
-            resume_id,
-            ["work_experience", "project"],
-            query,
-            5,
-            mysql=handles.mysql,
-            milvus=handles.milvus,
-            embedder=handles.embedder,
-        )
+    hits = await _search_resume_chunks(
+        resume_id,
+        ["work_experience", "project"],
+        query,
+        5,
+    )
     resume_slice = build_responsibilities_resume_slice(hits)
     if resume_slice is None:
         return await _evaluate_missing_retrieval_node(
@@ -332,7 +376,11 @@ async def _evaluate_dimension_node(
     messages = await prompt.aformat_messages(
         dimension_label=dimension_label,
         job_requirement_json=job_json,
-        resume_json=resume_json,
+        resume_payload_json=resume_json,
+        tool_arguments=(
+            "- job_json：逐字复制“JD 切片 JSON”\n"
+            "- resume_json：逐字复制“简历/档案切片 JSON”"
+        ),
     )
     await run_expert(
         messages=messages,
@@ -356,7 +404,8 @@ async def _evaluate_missing_retrieval_node(
     messages = await prompt.aformat_messages(
         dimension_label=dimension_label,
         job_requirement_json=job_slice.model_dump_json(),
-        resume_json=Resume().model_dump_json(),
+        resume_payload_json=Resume().model_dump_json(),
+        tool_arguments=f"- dimension：{dimension}",
     )
     await run_expert(
         messages=messages,
@@ -384,7 +433,11 @@ async def _evaluate_profile_dimension_node(
     messages = await prompt.aformat_messages(
         dimension_label=dimension_label,
         job_requirement_json=job_json,
-        resume_json=profile_json,
+        resume_payload_json=profile_json,
+        tool_arguments=(
+            "- job_json：逐字复制“JD 切片 JSON”\n"
+            "- profile_json：逐字复制“简历/档案切片 JSON”"
+        ),
     )
     await run_expert(
         messages=messages,
@@ -394,6 +447,38 @@ async def _evaluate_profile_dimension_node(
     )
     score = scorer(job_slice, profile_slice)
     return {"dimension_scores": {score.dimension: score}}
+
+
+async def _search_resume_chunks(
+    resume_id: int,
+    chunk_types: list[str],
+    query: str,
+    top_k: int,
+) -> list[ResumeChunkHit]:
+    """Search with per-run shared handles or a transient direct-call handle."""
+    context = _matching_kb_context.get()
+    if context is not None:
+        handles = await context.get(open_kb)
+        return await search_resume_chunks(
+            resume_id,
+            chunk_types,
+            query,
+            top_k,
+            mysql=handles.mysql,
+            milvus=handles.milvus,
+            embedder=handles.embedder,
+        )
+
+    async with await open_kb() as handles:
+        return await search_resume_chunks(
+            resume_id,
+            chunk_types,
+            query,
+            top_k,
+            mysql=handles.mysql,
+            milvus=handles.milvus,
+            embedder=handles.embedder,
+        )
 
 
 def _ordered_dimension_scores(state: MatchingState) -> list[DimensionScore]:

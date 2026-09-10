@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from job_agent.kb.errors import KbConfigError, KbNotFoundError, KbStoreError
+from job_agent.kb.models import ResumeProfile
 from job_agent.matching.errors import MatchingExtractError, MatchingFileError
 from job_agent.resume.errors import (
     ResumeConfigError,
@@ -78,6 +79,48 @@ def test_main_passes_numeric_resume_id_without_loading_file(
     assert main([str(jd_path), "12"]) == 0
     assert resume_loads == []
     assert capsys.readouterr().out == "匹配报告\n"
+
+
+def test_load_resume_by_id_opens_mysql_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    from job_agent.matching import resume_tools
+
+    class FakeMysqlContext:
+        async def __aenter__(self) -> object:
+            return object()
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+    async def fake_load_profile(
+        resume_id: int,
+        *,
+        mysql: object,
+    ) -> ResumeProfile:
+        assert resume_id == 12
+        return ResumeProfile(
+            id=12,
+            source_path="resume.md",
+            status="vectorized",
+        )
+
+    monkeypatch.setattr(
+        resume_tools,
+        "open_mysql",
+        lambda: FakeMysqlContext(),
+        raising=False,
+    )
+    monkeypatch.setattr(resume_tools, "load_profile", fake_load_profile)
+    monkeypatch.setattr(
+        resume_tools,
+        "open_kb",
+        lambda: pytest.fail("ID load must not open vector services"),
+    )
+
+    result = asyncio.run(
+        resume_tools.load_resume_by_id.ainvoke({"resume_id": 12})
+    )
+
+    assert ResumeProfile.model_validate_json(result).id == 12
 
 
 def test_main_prints_report_and_returns_zero(
