@@ -1,0 +1,122 @@
+{
+  "personal_info": {
+    "name": "宗艳云",
+    "phone": null,
+    "email": null,
+    "location": "杭州"
+  },
+  "education": [
+    {
+      "school": "东华理工大学",
+      "degree": "本科",
+      "major": "软件专业",
+      "start_date": "2011-09",
+      "end_date": "2015-07"
+    }
+  ],
+  "work_experience": [
+    {
+      "company": "丁香园",
+      "title": "高级后端",
+      "start_date": "2021-08",
+      "end_date": "2026-07",
+      "responsibilities": [
+        "医考公开课选课、看课、会员与订单支付",
+        "题库由离线包迁移至服务端"
+      ],
+      "achievements": []
+    },
+    {
+      "company": "小黄柜",
+      "title": "后端负责人",
+      "start_date": "2018-07",
+      "end_date": "2021-08",
+      "responsibilities": [
+        "独立完成支付、运营后台、配送调度"
+      ],
+      "achievements": []
+    },
+    {
+      "company": "恒生电子",
+      "title": "后端开发工程师",
+      "start_date": "2015-07",
+      "end_date": "2018-07",
+      "responsibilities": [
+        "参与银行侧二代支付、超级网银、非税等模块"
+      ],
+      "achievements": []
+    }
+  ],
+  "projects": [
+    {
+      "name": "医考智能客服助理",
+      "role": "Agent 开发 / 后端研发",
+      "start_date": "2026-05",
+      "end_date": "2026-07",
+      "responsibilities": [
+        "从 0 到 1 设计并实现智能客服对话服务"
+      ],
+      "achievements": [
+        "平均模型调用次数由 4 次以上降至 2 次以内",
+        "错误权益陈述 0 起"
+      ]
+    },
+    {
+      "name": "丁香医考刷题 / 看课主链路",
+      "role": "核心后端",
+      "start_date": "2024-09",
+      "end_date": "2026-07",
+      "responsibilities": [
+        "负责答题与看课主路径稳定性"
+      ],
+      "achievements": [
+        "答题主路径 TP99 由约 800ms 降至约 150ms"
+      ]
+    },
+    {
+      "name": "医考题库去离线化与拆服务",
+      "role": "核心后端",
+      "start_date": "2023-12",
+      "end_date": "2024-08",
+      "responsibilities": [
+        "将题库迁移至服务端并拆分内容、学习、网关"
+      ],
+      "achievements": [
+        "迁移覆盖百万级题目，全程不停服"
+      ]
+    },
+    {
+      "name": "丁香公开课交易与学习",
+      "role": "核心后端",
+      "start_date": "2023-08",
+      "end_date": "2023-12",
+      "responsibilities": [
+        "支付回调幂等与看课权限跟随订单状态"
+      ],
+      "achievements": [
+        "大促期间超卖 0 单、支付资损 0 单"
+      ]
+    },
+    {
+      "name": "在线医考公开课业务与交易链路",
+      "role": "核心后端",
+      "start_date": "2021-08",
+      "end_date": "2023-06",
+      "responsibilities": [
+        "负责医考公开课选课、看课、会员与购课"
+      ],
+      "achievements": [
+        "交易接口 TP99 约 150ms"
+      ]
+    }
+  ],
+  "skills": [
+    "java",
+    "spring",
+    "mysql",
+    "redis",
+    "langgraph",
+    "rag"
+  ],
+  "summary": "11 年 Java 后端，近三年负责医考业务与智能客服 Agent，求职方向为 AI Agent / AI 应用工程化。"
+}

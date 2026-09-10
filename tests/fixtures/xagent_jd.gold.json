@@ -1,0 +1,17 @@
+{
+  "title": "Agent 平台核心框架开发",
+  "must_have_skills": [
+    "python"
+  ],
+  "nice_to_have_skills": [
+    "langchain"
+  ],
+  "years_required": "3年以上后端开发、AI系统或平台开发经验",
+  "education_required": "计算机相关专业本科及以上学历",
+  "location": null,
+  "responsibilities": [
+    "参与 Agent 平台核心框架开发，包括任务编排、规划系统、记忆系统和工具执行机制",
+    "构建支持多步骤推理和任务执行的 Agent Runtime",
+    "设计和实现 Agent 的记忆系统，包括短期上下文、长期记忆"
+  ]
+}
