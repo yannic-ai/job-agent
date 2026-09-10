@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
+from types import TracebackType
 
+from job_agent.config import KbConfig, load_kb_config
 from job_agent.kb.chunker import chunk_resume
+from job_agent.kb.embedder import BgeM3Embedder
 from job_agent.kb.errors import KbNotFoundError, KbStoreError
+from job_agent.kb.milvus_store import PyMilvusResumeStore
 from job_agent.kb.models import ResumeProfile
+from job_agent.kb.mysql_store import SqlAlchemyResumeStore
 from job_agent.kb.profile import build_resume_profile
 from job_agent.kb.stores import Embedder, ResumeMilvusStore, ResumeMysqlStore
 from job_agent.resume.loader import load_markdown
@@ -17,16 +24,98 @@ from job_agent.resume.schema import Resume
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class KbHandles:
+    """Concrete knowledge-base services with async resource cleanup."""
+
+    mysql: SqlAlchemyResumeStore
+    milvus: PyMilvusResumeStore
+    embedder: BgeM3Embedder
+
+    async def __aenter__(self) -> KbHandles:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        await self.close()
+
+    async def close(self) -> None:
+        """Close storage clients owned by these handles."""
+        await self.milvus.close()
+        await self.mysql.close()
+
+
+async def open_kb(config: KbConfig | None = None) -> KbHandles:
+    """Open concrete knowledge-base services from configuration."""
+    resolved_config = config or load_kb_config()
+    mysql = SqlAlchemyResumeStore(resolved_config)
+    try:
+        milvus, embedder = await asyncio.gather(
+            asyncio.to_thread(
+                PyMilvusResumeStore,
+                uri=resolved_config.milvus_uri,
+                token=resolved_config.milvus_token,
+            ),
+            asyncio.to_thread(
+                BgeM3Embedder,
+                model_name=resolved_config.bge_m3_model,
+            ),
+        )
+    except Exception:
+        await mysql.close()
+        raise
+    return KbHandles(mysql=mysql, milvus=milvus, embedder=embedder)
+
+
 async def ingest_resume(
+    path: str,
+    *,
+    mysql: ResumeMysqlStore | None = None,
+    milvus: ResumeMilvusStore | None = None,
+    embedder: Embedder | None = None,
+    parse: Callable[[str], Resume] = parse_resume,
+) -> int:
+    """Parse a resume file, persist chunks, and vectorize them."""
+    stores = (mysql, milvus, embedder)
+    if all(store is None for store in stores):
+        async with await open_kb() as handles:
+            return await _ingest_resume(
+                path,
+                mysql=handles.mysql,
+                milvus=handles.milvus,
+                embedder=handles.embedder,
+                parse=parse,
+            )
+    if any(store is None for store in stores):
+        raise KbStoreError(
+            "mysql, milvus, and embedder must be provided together"
+        )
+    return await _ingest_resume(
+        path,
+        mysql=mysql,
+        milvus=milvus,
+        embedder=embedder,
+        parse=parse,
+    )
+
+
+async def _ingest_resume(
     path: str,
     *,
     mysql: ResumeMysqlStore,
     milvus: ResumeMilvusStore,
     embedder: Embedder,
-    parse: Callable[[str], Resume] = parse_resume,
+    parse: Callable[[str], Resume],
 ) -> int:
-    """Parse a resume file, persist chunks, and vectorize them."""
+    """Run ingest with fully resolved knowledge-base services."""
     load_markdown(path)
+    initialize = getattr(mysql, "initialize", None)
+    if initialize is not None:
+        await initialize()
     source_hash = _source_hash(path)
     resume = parse(path)
     profile = build_resume_profile(resume).model_copy(
