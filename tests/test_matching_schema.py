@@ -1,4 +1,13 @@
-from job_agent.matching.schemas import DIMENSIONS, Decision, JobRequirement, label_from_average
+import pytest
+from pydantic import ValidationError
+
+from job_agent.matching.schemas import (
+    DIMENSIONS,
+    Decision,
+    DimensionScore,
+    JobRequirement,
+    label_from_average,
+)
 
 
 def test_job_requirement_defaults():
@@ -22,3 +31,15 @@ def test_decision_round_trip():
     decision = Decision(average=3.6, recommendation="待定")
     assert decision.recommendation == "待定"
     assert DIMENSIONS[0] == "skills"
+
+
+def test_dimension_score_score_range():
+    low = DimensionScore(dimension="skills", score=1, evidence="ok")
+    high = DimensionScore(dimension="skills", score=5, evidence="ok")
+    assert low.score == 1
+    assert high.score == 5
+
+    with pytest.raises(ValidationError):
+        DimensionScore(dimension="skills", score=0, evidence="bad")
+    with pytest.raises(ValidationError):
+        DimensionScore(dimension="skills", score=6, evidence="bad")
