@@ -3,10 +3,15 @@ from __future__ import annotations
 import re
 from datetime import date
 
+from job_agent.kb.profile import (
+    _calculate_experience_years,
+    _highest_resume_degree,
+    _months_between,
+    _parse_year_month,
+)
 from job_agent.matching.schemas import DimensionScore, JobRequirement
 from job_agent.resume.schema import Resume
 
-_DATE_PATTERN = re.compile(r"^(?P<year>\d{4})-(?P<month>\d{2})$")
 _RESPONSIBILITY_TOKEN_PATTERN = re.compile(r"[A-Za-z]{2,}|[\u4e00-\u9fff]{2,}")
 
 
@@ -185,45 +190,6 @@ def _extract_required_years(text: str | None) -> int | None:
     return int(match.group(0)) if match else None
 
 
-def _calculate_experience_years(resume: Resume, today: date) -> float | None:
-    parsed_ranges: list[tuple[tuple[int, int], tuple[int, int]]] = []
-    for experience in resume.work_experience:
-        start_value = _parse_year_month(experience.start_date, today)
-        end_value = _parse_year_month(experience.end_date, today)
-        if start_value is None or end_value is None:
-            continue
-        parsed_ranges.append((start_value, end_value))
-
-    if not parsed_ranges:
-        return None
-
-    earliest_start = min(start for start, _ in parsed_ranges)
-    latest_end = max(end for _, end in parsed_ranges)
-    months = max(0, _months_between(earliest_start, latest_end))
-    return months / 12
-
-
-def _parse_year_month(value: str | None, today: date) -> tuple[int, int] | None:
-    if not value:
-        return None
-    if value.strip().lower() == "present":
-        return today.year, today.month
-
-    match = _DATE_PATTERN.fullmatch(value.strip())
-    if not match:
-        return None
-
-    year = int(match.group("year"))
-    month = int(match.group("month"))
-    if month < 1 or month > 12:
-        return None
-    return year, month
-
-
-def _months_between(start: tuple[int, int], end: tuple[int, int]) -> int:
-    return (end[0] - start[0]) * 12 + (end[1] - start[1])
-
-
 def _highest_required_degree(text: str | None) -> int | None:
     if not text:
         return None
@@ -234,19 +200,6 @@ def _highest_required_degree(text: str | None) -> int | None:
     if "本科" in text:
         return 1
     return None
-
-
-def _highest_resume_degree(resume: Resume) -> int:
-    highest = 0
-    for education in resume.education:
-        degree_text = education.degree or ""
-        if "博士" in degree_text:
-            highest = max(highest, 3)
-        elif "硕士" in degree_text:
-            highest = max(highest, 2)
-        elif "本科" in degree_text:
-            highest = max(highest, 1)
-    return highest
 
 
 def _degree_label(level: int) -> str:
