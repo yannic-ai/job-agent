@@ -1,10 +1,12 @@
 import asyncio
 from typing import Any
 
+import pytest
 from langchain_core.messages import AIMessage, ToolMessage
 from pydantic import BaseModel
 
 from job_agent.config import LLMConfig
+from job_agent.kb.errors import KbNotFoundError, KbStoreError
 from job_agent.matching.runtime import run_expert
 
 
@@ -154,3 +156,30 @@ def test_runtime_limits_executed_tool_calls_per_response() -> None:
     assert result.ok is True
     assert tool.calls == 2
     assert llm.tool_round_calls == 1
+
+
+@pytest.mark.parametrize(
+    "error",
+    [KbNotFoundError("missing"), KbStoreError("not vectorized")],
+)
+def test_runtime_preserves_kb_tool_errors(error: Exception) -> None:
+    class FailingTool:
+        name = "noop"
+
+        async def ainvoke(self, args: dict[str, Any]) -> str:
+            raise error
+
+    with pytest.raises(type(error), match=str(error)):
+        asyncio.run(
+            run_expert(
+                messages=[{"role": "user", "content": "go"}],
+                tools=[FailingTool()],
+                output_schema=Out,
+                config=LLMConfig(
+                    api_key="x",
+                    base_url="http://x",
+                    model="x",
+                ),
+                llm=FakeLLM(),
+            )
+        )

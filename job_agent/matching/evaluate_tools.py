@@ -8,13 +8,14 @@ from langchain.tools import tool
 
 from job_agent.kb.models import ResumeProfile
 from job_agent.matching.scoring import (
+    missing_retrieval_score,
     score_education,
     score_location,
     score_responsibilities,
     score_skills,
     score_years,
 )
-from job_agent.matching.schemas import JobRequirement
+from job_agent.matching.schemas import DimensionName, JobRequirement
 from job_agent.resume.schema import Resume
 
 logger = logging.getLogger(__name__)
@@ -75,3 +76,13 @@ async def score_responsibilities_tool(job_json: str, resume_json: str) -> str:
     """Score the responsibilities dimension and return DimensionScore JSON."""
     logger.info("scoring responsibilities dimension")
     return await _score_to_json(score_responsibilities, job_json, resume_json)
+
+
+@tool
+async def missing_retrieval_score_tool(dimension: DimensionName) -> str:
+    """Return the neutral score used when resume retrieval has no hits."""
+    logger.info(
+        "scoring missing retrieval",
+        extra={"dimension": dimension},
+    )
+    return missing_retrieval_score(dimension).model_dump_json()

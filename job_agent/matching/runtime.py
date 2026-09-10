@@ -8,7 +8,13 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 
 from job_agent.config import LLMConfig
+from job_agent.kb.errors import KbConfigError, KbNotFoundError, KbStoreError
 from job_agent.matching.errors import MatchingExtractError
+from job_agent.resume.errors import (
+    ResumeConfigError,
+    ResumeExtractError,
+    ResumeFileError,
+)
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
@@ -93,7 +99,15 @@ async def run_expert(
             method="json_mode",
         )
         result = await structured_llm.ainvoke(history)
-    except MatchingExtractError:
+    except (
+        KbConfigError,
+        KbNotFoundError,
+        KbStoreError,
+        MatchingExtractError,
+        ResumeConfigError,
+        ResumeExtractError,
+        ResumeFileError,
+    ):
         raise
     except Exception as exc:  # noqa: BLE001
         raise MatchingExtractError(f"专家节点运行失败：{exc}") from exc

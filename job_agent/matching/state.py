@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Annotated, NotRequired, TypedDict
 
+from job_agent.kb.models import ResumeProfile
 from job_agent.matching.schemas import Decision, DimensionScore, JobRequirement
-from job_agent.resume.schema import Resume
 
 
 def merge_scores(
@@ -17,9 +17,10 @@ def merge_scores(
 
 class MatchingState(TypedDict):
     jd_path: str
-    resume_path: str
+    resume_ref: str
+    resume_id: NotRequired[int | None]
     job_requirement: NotRequired[JobRequirement | None]
-    resume: NotRequired[Resume | None]
+    resume_profile: NotRequired[ResumeProfile | None]
     dimension_scores: Annotated[dict[str, DimensionScore], merge_scores]
     decision: NotRequired[Decision | None]
     report: NotRequired[str | None]
