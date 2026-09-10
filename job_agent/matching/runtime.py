@@ -62,20 +62,21 @@ async def run_expert(
         bound_llm = runtime_llm.bind_tools(tools)
         while calls < max_tool_calls:
             response = await bound_llm.ainvoke(history)
-            calls += 1
             history.append(response)
 
             tool_calls = getattr(response, "tool_calls", None) or []
             if not tool_calls:
                 break
 
-            for tool_call in tool_calls:
+            remaining_calls = max_tool_calls - calls
+            for tool_call in tool_calls[:remaining_calls]:
                 tool_name = tool_call["name"]
                 tool = tool_map.get(tool_name)
                 if tool is None:
                     raise MatchingExtractError(f"未知工具：{tool_name}")
 
                 tool_result = await _run_tool(tool, tool_call.get("args", {}))
+                calls += 1
                 history.append(
                     ToolMessage(
                         content=_stringify_tool_result(tool_result),
@@ -83,7 +84,7 @@ async def run_expert(
                     )
                 )
 
-            # 达到上限后直接离开 tools 循环，转入结构化输出阶段。
+            # 工具执行数达到上限后，不再继续带 tools 的模型回合。
             if calls >= max_tool_calls:
                 break
 
