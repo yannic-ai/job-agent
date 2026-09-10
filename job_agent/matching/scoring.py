@@ -1,16 +1,9 @@
 from __future__ import annotations
 
 import re
-from datetime import date
 
-from job_agent.kb.profile import (
-    _calculate_experience_years,
-    _degree_label,
-    _highest_resume_degree,
-    _months_between,
-    _parse_year_month,
-)
-from job_agent.matching.schemas import DimensionScore, JobRequirement
+from job_agent.kb.models import ResumeProfile
+from job_agent.matching.schemas import DimensionName, DimensionScore, JobRequirement
 from job_agent.resume.schema import Resume
 
 _RESPONSIBILITY_TOKEN_PATTERN = re.compile(r"[A-Za-z]{2,}|[\u4e00-\u9fff]{2,}")
@@ -27,6 +20,15 @@ def hit_ratio_to_score(ratio: float) -> int:
     if ratio < 0.9:
         return 4
     return 5
+
+
+def missing_retrieval_score(dimension: DimensionName) -> DimensionScore:
+    """Return the neutral score when retrieval returns no relevant chunks."""
+    return DimensionScore(
+        dimension=dimension,
+        score=3,
+        evidence="未召回到相关条目",
+    )
 
 
 def score_skills(job: JobRequirement, resume: Resume) -> DimensionScore:
@@ -50,22 +52,17 @@ def score_skills(job: JobRequirement, resume: Resume) -> DimensionScore:
     )
 
 
-def score_years(
-    job: JobRequirement,
-    resume: Resume,
-    *,
-    today: date | None = None,
-) -> DimensionScore:
-    """Score years of experience from the earliest start to latest end month."""
-    today_value = today or date.today()
+def score_years(job: JobRequirement, profile: ResumeProfile) -> DimensionScore:
+    """Score years of experience from profile experience_months."""
     required_years = _extract_required_years(job.years_required)
-    if required_years is None:
-        return DimensionScore(dimension="years", score=3, evidence="岗位年限要求缺失")
+    if required_years is None or profile.experience_months is None:
+        if required_years is None:
+            evidence = "岗位年限要求缺失"
+        else:
+            evidence = "简历缺少可解析工作年限"
+        return DimensionScore(dimension="years", score=3, evidence=evidence)
 
-    actual_years = _calculate_experience_years(resume, today_value)
-    if actual_years is None:
-        return DimensionScore(dimension="years", score=3, evidence="简历缺少可解析工作年限")
-
+    actual_years = profile.experience_months / 12
     if actual_years >= required_years + 2:
         score = 5
     elif actual_years >= required_years:
@@ -83,16 +80,14 @@ def score_years(
     )
 
 
-def score_education(job: JobRequirement, resume: Resume) -> DimensionScore:
+def score_education(job: JobRequirement, profile: ResumeProfile) -> DimensionScore:
     """Score education against the highest degree mentioned in the JD."""
     required_level = _highest_required_degree(job.education_required)
     if required_level is None:
         return DimensionScore(dimension="education", score=3, evidence="岗位未提供学历要求")
-    if not resume.education:
-        return DimensionScore(dimension="education", score=3, evidence="简历缺少学历信息")
 
-    candidate_level = _highest_resume_degree(resume)
-    candidate_label = _degree_label(candidate_level) or "未识别"
+    candidate_level = _profile_degree_level(profile.highest_degree)
+    candidate_label = profile.highest_degree or "未识别"
 
     if required_level == 3:
         score = 5 if candidate_level == 3 else 2
@@ -115,10 +110,10 @@ def score_education(job: JobRequirement, resume: Resume) -> DimensionScore:
     )
 
 
-def score_location(job: JobRequirement, resume: Resume) -> DimensionScore:
+def score_location(job: JobRequirement, profile: ResumeProfile) -> DimensionScore:
     """Score location by normalized substring containment."""
     job_location = _compact_text(job.location)
-    resume_location = _compact_text(resume.personal_info.location)
+    resume_location = _compact_text(profile.location)
 
     if not job_location and not resume_location:
         return DimensionScore(dimension="location", score=3, evidence="岗位与候选人地点均缺失")
@@ -201,6 +196,16 @@ def _highest_required_degree(text: str | None) -> int | None:
     if "本科" in text:
         return 1
     return None
+
+
+def _profile_degree_level(degree: str | None) -> int:
+    if degree == "博士":
+        return 3
+    if degree == "硕士":
+        return 2
+    if degree == "本科":
+        return 1
+    return 0
 
 
 def _build_responsibility_corpus(resume: Resume) -> str:

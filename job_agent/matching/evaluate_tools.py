@@ -6,6 +6,7 @@ from typing import Callable
 
 from langchain.tools import tool
 
+from job_agent.kb.models import ResumeProfile
 from job_agent.matching.scoring import (
     score_education,
     score_location,
@@ -30,6 +31,17 @@ async def _score_to_json(
     return score.model_dump_json()
 
 
+async def _score_profile_to_json(
+    scorer: Callable[[JobRequirement, ResumeProfile], object],
+    job_json: str,
+    profile_json: str,
+) -> str:
+    job = JobRequirement.model_validate_json(job_json)
+    profile = ResumeProfile.model_validate_json(profile_json)
+    score = await asyncio.to_thread(scorer, job, profile)
+    return score.model_dump_json()
+
+
 @tool
 async def score_skills_tool(job_json: str, resume_json: str) -> str:
     """Score the skills dimension and return DimensionScore JSON."""
@@ -38,24 +50,24 @@ async def score_skills_tool(job_json: str, resume_json: str) -> str:
 
 
 @tool
-async def score_years_tool(job_json: str, resume_json: str) -> str:
+async def score_years_tool(job_json: str, profile_json: str) -> str:
     """Score the years dimension and return DimensionScore JSON."""
     logger.info("scoring years dimension")
-    return await _score_to_json(score_years, job_json, resume_json)
+    return await _score_profile_to_json(score_years, job_json, profile_json)
 
 
 @tool
-async def score_education_tool(job_json: str, resume_json: str) -> str:
+async def score_education_tool(job_json: str, profile_json: str) -> str:
     """Score the education dimension and return DimensionScore JSON."""
     logger.info("scoring education dimension")
-    return await _score_to_json(score_education, job_json, resume_json)
+    return await _score_profile_to_json(score_education, job_json, profile_json)
 
 
 @tool
-async def score_location_tool(job_json: str, resume_json: str) -> str:
+async def score_location_tool(job_json: str, profile_json: str) -> str:
     """Score the location dimension and return DimensionScore JSON."""
     logger.info("scoring location dimension")
-    return await _score_to_json(score_location, job_json, resume_json)
+    return await _score_profile_to_json(score_location, job_json, profile_json)
 
 
 @tool
