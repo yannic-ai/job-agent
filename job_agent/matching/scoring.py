@@ -5,6 +5,7 @@ from datetime import date
 
 from job_agent.kb.profile import (
     _calculate_experience_years,
+    _degree_label,
     _highest_resume_degree,
     _months_between,
     _parse_year_month,
@@ -91,7 +92,7 @@ def score_education(job: JobRequirement, resume: Resume) -> DimensionScore:
         return DimensionScore(dimension="education", score=3, evidence="简历缺少学历信息")
 
     candidate_level = _highest_resume_degree(resume)
-    candidate_label = _degree_label(candidate_level)
+    candidate_label = _degree_label(candidate_level) or "未识别"
 
     if required_level == 3:
         score = 5 if candidate_level == 3 else 2
@@ -200,16 +201,6 @@ def _highest_required_degree(text: str | None) -> int | None:
     if "本科" in text:
         return 1
     return None
-
-
-def _degree_label(level: int) -> str:
-    if level == 3:
-        return "博士"
-    if level == 2:
-        return "硕士"
-    if level == 1:
-        return "本科"
-    return "未识别"
 
 
 def _build_responsibility_corpus(resume: Resume) -> str:
