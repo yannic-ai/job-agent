@@ -9,6 +9,10 @@ dependencies = [
     "langchain-openai>=0.3",
     "pydantic>=2",
     "python-dotenv>=1.0",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiomysql",
+    "pymilvus",
+    "FlagEmbedding",
 ]
 
 [project.optional-dependencies]
